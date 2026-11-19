@@ -121,8 +121,11 @@ function scrollToHash(hash) {
     lenis.scrollTo(engageY(), { duration: 1.2, onComplete: () => { releaseUntil = 0; engage(0); } });
     return;
   }
-  if (lenis) lenis.scrollTo(target, { offset: target === 0 ? 0 : -headerH() - 8, duration: 1.2 });
-  else {
+  if (lenis) {
+    // a menu jump glides past Projects; keep the deck from grabbing the page on the way
+    if (typeof releaseUntil !== 'undefined') releaseUntil = Infinity;
+    lenis.scrollTo(target, { offset: target === 0 ? 0 : -headerH() - 8, duration: 1.2, onComplete: () => { releaseUntil = performance.now() + 300; lastScroll = scrollY; } });
+  } else {
     const y = target === 0 ? 0 : target.getBoundingClientRect().top + scrollY - headerH() - 8;
     scrollTo({ top: y, behavior: reduced ? 'auto' : 'smooth' });
   }
@@ -559,6 +562,22 @@ function release(dir) {
   if (dir > 0) lenis.scrollTo('#skills', { offset: -headerH() + 1, duration: 1.1 });
   else if (dir < 0) lenis.scrollTo(engageY() - innerHeight * 0.75, { duration: 1.1 });
 }
+/* anything else moving the page while the deck holds it (scrollbar drag, find-in-page, focus jump) releases it */
+addEventListener('scroll', () => {
+  if (engaged && Math.abs(scrollY - engageY()) > 40) {
+    engaged = false;
+    releaseUntil = performance.now() + 1100;
+    lenis.start();
+  }
+}, { passive: true });
+/* keyboard Tab moving focus out of Projects lets the page go, without jumping anywhere */
+document.addEventListener('focusin', (e) => {
+  if (engaged && !workSec.contains(e.target) && !dlg.contains(e.target)) {
+    engaged = false;
+    releaseUntil = performance.now() + 1100;
+    lenis.start();
+  }
+});
 function step(dir) {
   const k = curIndex(), n = visibleProjects().length;
   if (dir > 0 && k >= n - 1) return release(1);

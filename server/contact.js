@@ -72,7 +72,7 @@ function shell({ preheader, body }) {
   <tr><td style="padding:0 4px 18px;">
     <table role="presentation" cellpadding="0" cellspacing="0"><tr>
       <td style="width:34px;height:34px;border-radius:10px;background:${C.a};color:#0a0a0a;font:700 18px ${FONT};text-align:center;vertical-align:middle;">B</td>
-      <td style="padding-left:10px;font:600 15px ${MONO};color:${C.text};">burhanuddin<span style="color:${C.dim};">.dev</span></td>
+      <td style="padding-left:10px;font:600 15px ${MONO};color:${C.text};">burhanb53<span style="color:${C.dim};">.dev</span></td>
     </tr></table>
   </td></tr>
   <tr><td style="background:${C.card};border:1px solid ${C.line};border-radius:20px;overflow:hidden;">
@@ -153,7 +153,7 @@ export async function handleContact(body, ip, env = process.env) {
   const seenKeys = markSeen(id, d);
   if (!seenKeys) return { status: 200, json: { ok: true, duplicate: true } };
 
-  const owner = ownerEmail(d), visitor = visitorEmail(d, env.SITE_URL);
+  const owner = ownerEmail(d), visitor = visitorEmail(d, env.SITE_URL || 'https://burhanb53.dev');
   if (dry) return { status: 200, json: { ok: true, dryRun: true, owner, visitor } };
 
   const transport = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user, pass } });
