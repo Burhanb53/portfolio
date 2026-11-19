@@ -571,9 +571,10 @@ html:not(.brand-logos) .marquee-item svg { fill: currentColor !important; }
   .car-hint { display: block; }
 }
 @media (max-width: 999px) {
-  .projects { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 calc(var(--gutter) * -1); padding: 4px var(--gutter) 8px; scrollbar-width: none; overscroll-behavior-x: contain; }
+  #work { overflow-x: clip; }
+  .projects { position: relative; display: flex; gap: 12px; padding: 4px 0 8px; touch-action: pan-y; will-change: transform; transition: transform .45s cubic-bezier(.2,.8,.2,1); }
   .projects::-webkit-scrollbar { display: none; }
-  .proj { flex: 0 0 84%; max-width: 420px; scroll-snap-align: center; }
+  .proj { flex: 0 0 86%; max-width: 420px; }
   .proj.hidden { display: none; }
   .proj h3 { font-size: 20px; }
 }

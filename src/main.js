@@ -263,7 +263,7 @@ $('#filters').addEventListener('click', (e) => {
   projEls.forEach((p) => p.classList.toggle('hidden', f !== 'all' && p.dataset.kind !== f));
   renderDots();
   if (isDesk()) showProject(0);
-  else { track.scrollTo({ left: 0 }); const first = projEls.find((p) => !p.classList.contains('hidden')); if (first) setActiveProject(first.dataset.id); syncDots(); }
+  else mobileGo(0, true);
   requestAnimationFrame(() => { ScrollTrigger.refresh(); measure(); });
 });
 
@@ -521,23 +521,61 @@ function showProject(k) {
   syncDots();
 }
 
-/* phone carousel */
-function syncCarousel() {
-  if (isDesk()) return;
+/* phone carousel: a transform track driven by touch. Vertical swipes always scroll the page
+   (touch-action: pan-y); a short horizontal swipe moves exactly one project. */
+let mobK = 0;
+function mobOffset(k) {
+  const p = visibleProjects()[k];
+  if (!p) return 0;
+  return -(p.offsetLeft - (track.parentElement.clientWidth - p.offsetWidth) / 2);
+}
+function mobileGo(k, instant) {
   const vis = visibleProjects();
-  const mid = track.scrollLeft + track.clientWidth / 2;
-  let best = 0, bestD = Infinity;
-  vis.forEach((p, i) => { const d = Math.abs(p.offsetLeft + p.offsetWidth / 2 - mid); if (d < bestD) { bestD = d; best = i; } });
-  if (vis[best] && PROJECTS[S.activeP]?.id !== vis[best].dataset.id) setActiveProject(vis[best].dataset.id);
+  if (!vis.length) return;
+  mobK = Math.max(0, Math.min(vis.length - 1, k));
+  track.style.transition = instant || reduced ? 'none' : '';
+  track.style.transform = `translate3d(${mobOffset(mobK)}px,0,0)`;
+  setActiveProject(vis[mobK].dataset.id);
   syncDots();
 }
-function scrollCarouselTo(k) {
-  const p = visibleProjects()[k];
-  if (p) track.scrollTo({ left: p.offsetLeft - (track.clientWidth - p.offsetWidth) / 2, behavior: reduced ? 'auto' : 'smooth' });
+let tStart = null;
+track.addEventListener('touchstart', (e) => {
+  if (isDesk() || e.touches.length > 1) return;
+  const t = e.touches[0];
+  tStart = { x: t.clientX, y: t.clientY, time: performance.now(), axis: '' };
+}, { passive: true });
+track.addEventListener('touchmove', (e) => {
+  if (!tStart) return;
+  const t = e.touches[0], dx = t.clientX - tStart.x, dy = t.clientY - tStart.y;
+  if (!tStart.axis && Math.hypot(dx, dy) > 8) tStart.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+  if (tStart.axis !== 'x') return;
+  const n = visibleProjects().length;
+  const edge = (mobK === 0 && dx > 0) || (mobK === n - 1 && dx < 0) ? 0.35 : 1; // rubber-band at the ends
+  track.style.transition = 'none';
+  track.style.transform = `translate3d(${mobOffset(mobK) + dx * edge}px,0,0)`;
+}, { passive: true });
+function touchEnd(e) {
+  if (!tStart) return;
+  const s = tStart;
+  tStart = null;
+  if (s.axis !== 'x') return;
+  const dx = (e.changedTouches[0]?.clientX ?? s.x) - s.x;
+  const fast = Math.abs(dx) / Math.max(1, performance.now() - s.time) > 0.22;
+  if (Math.abs(dx) > 40 || (fast && Math.abs(dx) > 12)) mobileGo(mobK + (dx < 0 ? 1 : -1));
+  else mobileGo(mobK);
+  track.dataset.swiped = '1';
+  setTimeout(() => delete track.dataset.swiped, 50);
 }
-track.addEventListener('scroll', () => requestAnimationFrame(syncCarousel), { passive: true });
+track.addEventListener('touchend', touchEnd, { passive: true });
+track.addEventListener('touchcancel', touchEnd, { passive: true });
+/* a swipe must not also open the project details */
+track.addEventListener('click', (e) => { if (track.dataset.swiped) { e.stopPropagation(); e.preventDefault(); } }, true);
+addEventListener('resize', () => {
+  if (isDesk()) { track.style.transform = ''; track.style.transition = ''; }
+  else mobileGo(mobK, true);
+});
 
-function goTo(k) { if (isDesk()) showProject(k); else scrollCarouselTo(k); }
+function goTo(k) { if (isDesk()) showProject(k); else mobileGo(k); }
 $('#carPrev').addEventListener('click', () => goTo(curIndex() - 1));
 $('#carNext').addEventListener('click', () => goTo(curIndex() + 1));
 dots.addEventListener('click', (e) => { const b = e.target.closest('[data-k]'); if (b) goTo(+b.dataset.k); });
@@ -620,7 +658,7 @@ addEventListener('keydown', (e) => {
 addEventListener('resize', () => { if (engaged && !viewerOn()) { engaged = false; lenis?.start(); } });
 
 renderDots();
-showProject(0);
+if (isDesk()) showProject(0); else mobileGo(0, true);
 
 /* service cards: animate the demos only while they are on screen; tilt on hover (desktop) */
 const svcCards = $$('.svc-card');
