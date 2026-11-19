@@ -28,7 +28,8 @@ function contactApi(env) {
 export default defineConfig(({ mode }) => {
   const env = { ...process.env, ...loadEnv(mode, process.cwd(), '') };
   /* absolute site address for share previews: the official domain unless SITE_URL overrides it */
-  const siteUrl = (env.SITE_URL || 'https://burhanb53.dev').replace(/\/$/, '');
+  let siteUrl = (env.SITE_URL || 'https://burhanb53.dev').trim().replace(/\/+$/, '');
+  if (!/^https?:\/\//i.test(siteUrl)) siteUrl = `https://${siteUrl}`;
   const siteMeta = { name: 'site-url', transformIndexHtml: (html) => html.replaceAll('%SITE_URL%', siteUrl) };
   return {
     plugins: [contactApi(env), siteMeta],
