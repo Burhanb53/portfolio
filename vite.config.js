@@ -27,8 +27,12 @@ function contactApi(env) {
 
 export default defineConfig(({ mode }) => {
   const env = { ...process.env, ...loadEnv(mode, process.cwd(), '') };
+  /* absolute site address for share previews: SITE_URL, else Vercel's production domain */
+  const prod = env.VERCEL_PROJECT_PRODUCTION_URL || env.VERCEL_URL;
+  const siteUrl = (env.SITE_URL || (prod ? `https://${prod}` : '')).replace(/\/$/, '');
+  const siteMeta = { name: 'site-url', transformIndexHtml: (html) => html.replaceAll('%SITE_URL%', siteUrl) };
   return {
-    plugins: [contactApi(env)],
+    plugins: [contactApi(env), siteMeta],
     build: { chunkSizeWarningLimit: 800, target: 'es2020' },
   };
 });
