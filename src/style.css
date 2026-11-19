@@ -438,6 +438,14 @@ html:not(.brand-logos) .marquee-item svg { fill: currentColor !important; }
 .form-note b { color: var(--text); font-weight: 600; }
 .form.sent .form-note { color: var(--text); }
 
+/* phones: blurred see-through bars are expensive to repaint while scrolling, so use solid ones */
+@media (max-width: 999px) {
+  .header.scrolled, .mbar, .footer, .btn-ghost, .badge { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .header.scrolled { background: rgba(8, 8, 10, .96); }
+  .mbar { background: #141417; }
+  .grain { display: none; }
+}
+
 /* the form sits right above the footer instead of leaving an empty band */
 #contact { padding-bottom: 32px; }
 @media (min-width: 1000px) { #contact { padding-bottom: 28px; } #contact .form { margin-top: 12px; } }

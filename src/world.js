@@ -31,10 +31,10 @@ export function createWorld({ canvas, speechEl, tipEl, reduced }) {
   const small = Math.min(innerWidth, innerHeight) < 700;
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, small ? 1.5 : 2));
+  renderer.setPixelRatio(Math.min(devicePixelRatio, small ? 1.25 : 2));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
-  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.enabled = !small;
   renderer.shadowMap.type = THREE.PCFShadowMap;
 
   const scene = new THREE.Scene();
@@ -454,7 +454,7 @@ export function createWorld({ canvas, speechEl, tipEl, reduced }) {
   }
 
   /* ---------- particles that morph between formations ---------- */
-  const N = small ? 1200 : 2600;
+  const N = small ? 700 : 2600;
   const forms = [];
   forms.push(Float32Array.from({ length: N * 3 }, (_, k) => (k % 3 === 0 ? rnd(-14, 14) : k % 3 === 1 ? rnd(-8, 8) : rnd(-14, 2))));
   { const a = new Float32Array(N * 3); for (let i = 0; i < N; i++) { const phi = Math.acos(1 - (2 * (i + 0.5)) / N), th = Math.PI * (1 + Math.sqrt(5)) * i, r = 3.4; a[i * 3] = -3.1 + r * Math.cos(th) * Math.sin(phi); a[i * 3 + 1] = 0.2 + r * Math.cos(phi); a[i * 3 + 2] = -1.8 + r * Math.sin(th) * Math.sin(phi); } forms.push(a); }
@@ -583,6 +583,14 @@ export function createWorld({ canvas, speechEl, tipEl, reduced }) {
     last = now; t += dt; frame++;
 
     S.fs = reduced ? S.f : S.fs + (S.f - S.fs) * 0.07;
+    // phones: the 3D scene belongs to the intro only. Past it, fade it out and stop drawing,
+    // so scrolling the rest of the page never competes with WebGL for the phone's CPU/GPU.
+    if (isMobile()) {
+      const op = clamp(1 - (S.fs - 0.25) / 0.45);
+      const ops = op.toFixed(2);
+      if (canvas.style.opacity !== ops) canvas.style.opacity = ops;
+      if (op <= 0) { if (speechEl) speechEl.classList.remove('show'); return; }
+    } else if (canvas.style.opacity) canvas.style.opacity = '';
     const fs = S.fs, i0 = Math.min(LAST, Math.floor(fs)), i1 = Math.min(LAST, i0 + 1), e = ease(fs - i0);
 
     const st = lerpState(STUDIO[i0], STUDIO[i1], e); apply(studio, mob(st)); studio.visible = studio.scale.x > 0.12;
@@ -696,11 +704,6 @@ export function createWorld({ canvas, speechEl, tipEl, reduced }) {
       speechEl.style.visibility = visible ? 'visible' : 'hidden';
     }
 
-    // phones: the world is the star of the intro, then becomes a faint backdrop behind content
-    if (isMobile()) {
-      const op = (0.16 + 0.84 * clamp(1 - (fs - 0.25) / 0.45)).toFixed(2);
-      if (canvas.style.opacity !== op) canvas.style.opacity = op;
-    } else if (canvas.style.opacity) canvas.style.opacity = '';
 
     // when the footer scrolls in, lift the whole scene by the same number of pixels so it isn't covered
     const footTop = footerEl ? footerEl.getBoundingClientRect().top : innerHeight;
