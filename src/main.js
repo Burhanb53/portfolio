@@ -343,6 +343,7 @@ function toast(html) {
   clearTimeout(toastT);
   toastT = setTimeout(() => toastEl.classList.remove('show'), 2400);
 }
+$$('[data-cv]').forEach((a) => a.addEventListener('click', () => { toast(`${UI.download(16)} Downloading CV…`); world?.say?.('Thanks for checking my CV! 📄'); }));
 $('#copyEmail').addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(CONTACT.email);

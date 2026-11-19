@@ -438,6 +438,13 @@ html:not(.brand-logos) .marquee-item svg { fill: currentColor !important; }
 .form-note b { color: var(--text); font-weight: 600; }
 .form.sent .form-note { color: var(--text); }
 
+/* CV download buttons */
+.cv-head { display: none; }
+@media (min-width: 1000px) { .header-cta .cv-head { display: inline-flex; } }
+.mmenu-actions .mm-cv { grid-column: 1 / -1; }
+@media (max-width: 520px) { .hero-ctas .hero-cv { grid-column: 1 / -1; } }
+.cv-card > i:not(.go) { background: var(--a-soft); color: var(--a); }
+
 /* phones: blurred see-through bars are expensive to repaint while scrolling, so use solid ones */
 @media (max-width: 999px) {
   .header.scrolled, .mbar, .footer, .btn-ghost, .badge { backdrop-filter: none; -webkit-backdrop-filter: none; }
