@@ -55,6 +55,38 @@ $('#svcGrid').innerHTML = SERVICES.map((s, i) => `
   </article>`).join('');
 
 
+/* desktop: services are pitched in the 3D room. The section is pinned and each scroll step
+   brings the next service screen; this panel shows the same service as text. */
+$('#svcPitch').innerHTML = SERVICES.map((s, i) => `
+  <article class="svc-p${i === 0 ? ' on' : ''}" data-i="${i}">
+    <p class="svc-p-num">0${i + 1} / 0${SERVICES.length} · ${s.goal}</p>
+    <h3>${s.name}</h3>
+    <p class="svc-sub">${s.title}</p>
+    <ul class="svc-benefits">${s.benefits.map((b) => `<li><i>${UI.check(15)}</i><span>${b}</span></li>`).join('')}</ul>
+    <div class="svc-foot">
+      <a class="svc-quote" href="${waLink(`Hi Burhanuddin, I'm interested in ${s.name.toLowerCase()} to ${s.goal.toLowerCase()}.`)}" target="_blank" rel="noopener">Let's talk about it ${UI.arrowUpRight(15)}</a>
+      <div class="svc-stack" aria-label="Built with">${s.stack.map((n) => `<span title="${n}">${brandSvg(n, 16)}</span>`).join('')}</div>
+    </div>
+  </article>`).join('');
+$('#svcSteps').innerHTML = SERVICES.map((s, i) => `<button type="button" class="svc-step${i === 0 ? ' on' : ''}" data-i="${i}"><span>0${i + 1}</span>${s.name}</button>`).join('');
+const svcSec = $('#services');
+let svcActive = 0;
+function updateSvcPitch() {
+  const r = svcSec.getBoundingClientRect(), span = r.height - innerHeight;
+  S.svcP = span > 0 ? Math.max(0, Math.min(1, -r.top / span)) : 0;
+  const k = Math.min(SERVICES.length - 1, Math.floor(S.svcP * SERVICES.length));
+  if (k === svcActive) return;
+  svcActive = k;
+  $$('#svcPitch .svc-p').forEach((el, i) => el.classList.toggle('on', i === k));
+  $$('#svcSteps .svc-step').forEach((el, i) => el.classList.toggle('on', i === k));
+}
+$('#svcSteps').addEventListener('click', (e) => {
+  const b = e.target.closest('.svc-step'); if (!b) return;
+  const span = svcSec.offsetHeight - innerHeight;
+  const y = svcSec.getBoundingClientRect().top + scrollY + span * ((+b.dataset.i + 0.5) / SERVICES.length);
+  if (lenis) lenis.scrollTo(y, { duration: 1.2 }); else scrollTo({ top: y, behavior: 'smooth' });
+});
+
 const countFor = (id) => (id === 'all' ? PROJECTS.length : PROJECTS.filter((p) => p.kind === id).length);
 $('#filters').innerHTML = FILTERS.map((f, i) =>
   `<button class="filter" role="tab" aria-selected="${i === 0}" data-f="${f.id}">${f.label}<sup>${countFor(f.id)}</sup></button>`).join('');
@@ -159,6 +191,7 @@ function onScroll() {
   progress.style.transform = `scaleX(${max > 0 ? y / max : 0})`;
   mbar.classList.toggle('show', y > innerHeight * 0.55 && !contactVisible && !menuOpen);
   S.f = computeF();
+  updateSvcPitch();
 }
 
 /* scroll progress through the sections (0..5) drives the 3D world */
@@ -311,7 +344,12 @@ function closeProject() {
 dlg.addEventListener('close', () => { if (!engaged) lenis?.start(); lastFocus?.focus({ preventScroll: true }); });
 dlg.addEventListener('cancel', (e) => { e.preventDefault(); closeProject(); });
 dlg.addEventListener('click', (e) => { if (e.target === dlg || e.target.closest('.pd-close')) closeProject(); });
-$('#projects').addEventListener('click', (e) => { const c = e.target.closest('.proj'); if (c) openProject(c.dataset.id); });
+$('#projects').addEventListener('click', (e) => {
+  const c = e.target.closest('.proj'); if (!c) return;
+  // desktop: a side card slides to the middle first; the middle card opens its details
+  if (isDesk() && !c.classList.contains('on')) { goTo(visibleProjects().indexOf(c)); return; }
+  openProject(c.dataset.id);
+});
 $('#projects').addEventListener('keydown', (e) => {
   const c = e.target.closest('.proj');
   if (c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openProject(c.dataset.id); }
@@ -494,12 +532,15 @@ const track = $('#projects');
 const dots = $('#carDots');
 const workSec = $('#work');
 const isDesk = () => innerWidth >= 1000;
-const viewerOn = () => isDesk() && !!lenis && !reduced;
+const viewerOn = () => false; // projects no longer lock the scroll
 function visibleProjects() { return projEls.filter((p) => !p.classList.contains('hidden')); }
 const curIndex = () => Math.max(0, visibleProjects().findIndex((p) => p.dataset.id === PROJECTS[S.activeP]?.id));
 
 function renderDots() {
-  dots.innerHTML = visibleProjects().map((p, i) => `<button type="button" data-k="${i}" aria-label="Show ${PROJECTS.find((x) => x.id === p.dataset.id).t}"></button>`).join('');
+  dots.innerHTML = visibleProjects().map((p, i) => {
+    const pr = PROJECTS.find((x) => x.id === p.dataset.id), src = pr.phone ? pr.phone[0] : pr.img;
+    return `<button type="button" data-k="${i}" aria-label="Show ${pr.t}" title="${pr.t}"><img src="/${src}" alt="" loading="lazy" decoding="async" draggable="false"></button>`;
+  }).join('');
   syncDots();
 }
 function syncDots() {
@@ -518,6 +559,10 @@ function showProject(k) {
     p.classList.toggle('after', d > 0);
     p.classList.toggle('far', d > 3);
     p.style.setProperty('--d', String(Math.max(0, Math.min(d, 4))));
+    p.style.setProperty('--o', String(Math.max(-2, Math.min(2, d))));
+    p.style.setProperty('--ao', String(Math.min(2, Math.abs(d))));
+    p.classList.toggle('side', Math.abs(d) === 1);
+    p.classList.toggle('gone', Math.abs(d) > 1);
   });
   setActiveProject(vis[k].dataset.id);
   syncDots();
@@ -581,6 +626,70 @@ function goTo(k) { if (isDesk()) showProject(k); else mobileGo(k); }
 $('#carPrev').addEventListener('click', () => goTo(curIndex() - 1));
 $('#carNext').addEventListener('click', () => goTo(curIndex() + 1));
 dots.addEventListener('click', (e) => { const b = e.target.closest('[data-k]'); if (b) goTo(+b.dataset.k); });
+/* desktop: the deck flips to the next project on its own while Projects is on screen;
+   hovering or using the controls pauses it, so nobody has to scroll through every project */
+let workInView = false, autoPaused = false, hinted = false;
+/* the active dot fills up like a timer; when it is full the next project slides in */
+function restartDot() { const b = $('button.on', dots); if (!b) return; b.classList.remove('on'); void b.offsetWidth; b.classList.add('on'); }
+function autoNext() {
+  if (!isDesk() || !workInView || autoPaused || dlg.open || reduced) { restartDot(); return; }
+  const n = visibleProjects().length; if (n > 1) goTo((curIndex() + 1) % n);
+}
+dots.addEventListener('animationend', (e) => { if (e.animationName === 'dotFill') autoNext(); });
+const dragHint = document.createElement('div');
+dragHint.className = 'drag-hint'; dragHint.setAttribute('aria-hidden', 'true');
+dragHint.innerHTML = '<span class="dh-arrow">‹</span><span class="dh-hand"></span><span>drag to explore</span><span class="dh-arrow">›</span>';
+track.parentElement.insertBefore(dragHint, track);
+const hideHint = () => { if (hinted) return; hinted = true; dragHint.classList.add('done'); };
+new IntersectionObserver(([e]) => {
+  workInView = e.isIntersecting;
+  if (workInView && isDesk() && !reduced && !hinted) { track.classList.remove('nudge'); void track.offsetWidth; track.classList.add('nudge'); }
+  restartDot();
+}, { threshold: 0.45 }).observe(workSec);
+track.addEventListener('pointerenter', () => { autoPaused = true; dots.classList.add('paused'); });
+track.addEventListener('pointerleave', () => { autoPaused = false; dots.classList.remove('paused'); });
+const slowAuto = () => { hideHint(); dots.style.setProperty('--auto', '9s'); };
+['#carPrev', '#carNext', '#carDots'].forEach((s) => $(s).addEventListener('click', slowAuto));
+
+/* desktop: drag the front card left/right like a swipe card; a sideways trackpad swipe works too */
+$$('img', track).forEach((im) => im.setAttribute('draggable', 'false'));
+let dragX = null, dragDx = 0, dragCard = null;
+track.addEventListener('pointerdown', (e) => {
+  if (!isDesk() || e.button !== 0) return;
+  dragCard = visibleProjects()[curIndex()]; if (!dragCard) return;
+  dragX = e.clientX; dragDx = 0;
+});
+track.addEventListener('pointermove', (e) => {
+  if (dragX === null) return;
+  if (e.buttons === 0) { dragEnd(); return; }
+  dragDx = e.clientX - dragX;
+  if (Math.abs(dragDx) < 4) return;
+  if (!track.classList.contains('dragging')) track.setPointerCapture(e.pointerId);
+  track.classList.add('dragging');
+  dragCard.style.transition = 'none';
+  dragCard.style.transform = `translateX(${dragDx}px) rotate(${dragDx * 0.025}deg)`;
+});
+function dragEnd() {
+  if (dragX === null) return;
+  const dx = dragDx, card = dragCard;
+  dragX = null; dragCard = null;
+  track.classList.remove('dragging');
+  card.style.transition = ''; card.style.transform = '';
+  if (Math.abs(dx) > 70) {
+    goTo(curIndex() + (dx < 0 ? 1 : -1)); slowAuto();
+    track.dataset.swiped = '1'; setTimeout(() => delete track.dataset.swiped, 50);
+  }
+}
+track.addEventListener('pointerup', dragEnd);
+track.addEventListener('pointercancel', dragEnd);
+let wheelLock = 0;
+track.addEventListener('wheel', (e) => {
+  if (!isDesk() || Math.abs(e.deltaX) <= Math.abs(e.deltaY) || Math.abs(e.deltaX) < 12) return;
+  e.preventDefault();
+  if (performance.now() < wheelLock) return;
+  wheelLock = performance.now() + 650;
+  goTo(curIndex() + (e.deltaX > 0 ? 1 : -1)); slowAuto();
+}, { passive: false });
 
 /* desktop: lock / step / release */
 let engaged = false, lockUntil = 0, wheelAcc = 0, releaseUntil = 0, lastScroll = scrollY;

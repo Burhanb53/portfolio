@@ -5,6 +5,7 @@ export const S = {
   activeJ: 0,    // active experience item
   activeP: 0,    // project currently in view
   service: 0,    // service selected in the services explorer
+  svcP: 0,       // scroll progress through the pinned services section, 0..1 (desktop)
   wave: 0,       // set to 1 to make him wave
 };
 

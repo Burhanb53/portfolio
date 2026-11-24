@@ -8,7 +8,8 @@ import {
 } from 'simple-icons';
 import { S, BRAND_LOGOS } from './state.js';
 import { brandColor } from './icons.js';
-import { SKILLS, JOURNEY, PROJECTS, CONTACT } from './data.js';
+import { drawServiceDemo } from './serviceDemo.js';
+import { SKILLS, JOURNEY, PROJECTS, CONTACT, SERVICES } from './data.js';
 
 const MAIN_LOGOS = [siReact, siNodedotjs, siFlutter, siPostgresql, siKubernetes, siN8n];
 const MOON_LOGOS = [siNextdotjs, siTypescript, siJavascript, siMongodb, siRedis, siDocker, siTerraform, siFirebase, siGit];
@@ -186,19 +187,109 @@ export function createWorld({ canvas, speechEl, tipEl, reduced }) {
       stex.needsUpdate = true;
     }
     if (m !== mode && m === 'work') spinBoost = 1;
-    if (S.activeP !== lastP && m === 'work') { lidKick = 1; lastP = S.activeP; }
+    if (S.activeP !== lastP && m === 'work') lastP = S.activeP; // no lid dip: the screen just cross-fades
     mode = m; sig = s;
   }
 
   /* ---------- STUDIO: desk, chair, person ---------- */
   const studio = new THREE.Group();
   scene.add(studio);
-  const floor = mesh(new THREE.CylinderGeometry(3.2, 3.2, 0.14, 64), SM(0x111114, { metalness: 0.5, roughness: 0.4 }), false);
-  floor.position.y = -1.1;
-  studio.add(floor);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(3.25, 0.012, 8, 160), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 }));
-  ring.rotation.x = Math.PI / 2; ring.position.y = -1.02;
-  studio.add(ring);
+  /* ---------- the ROOM: one big open-front set around the desk ----------
+     Back wall at z = -2.2 running x = -13 … 7, floor top at y = -1.03.
+     Along the back wall, left to right: window (experience), bookshelf (skills),
+     four service screens (services), then the desk area (hero / contact). */
+  const X0 = -18, X1 = 7, RB = -2.2, FY = -1.03, RH = 6;
+  const RWD = X1 - X0, RCX = (X0 + X1) / 2;
+  const wallM = SM(0x0f0f13, { roughness: 0.95 });
+  const floor = mesh(new THREE.BoxGeometry(RWD, 0.14, 6), SM(0x15120f, { roughness: 0.6, metalness: 0.05 }), false);
+  floor.position.set(RCX, FY - 0.07, RB + 3); studio.add(floor);
+  const seamM = new THREE.MeshBasicMaterial({ color: 0x0b0a09 });
+  for (let x = X0 + 0.6; x < X1; x += 0.6) { const seam = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.002, 6), seamM); seam.position.set(x, FY + 0.001, RB + 3); studio.add(seam); }
+  const backWall = mesh(new THREE.BoxGeometry(RWD, RH, 0.12), wallM, false); backWall.position.set(RCX, FY + RH / 2, RB - 0.06); studio.add(backWall);
+  const sideWall = mesh(new THREE.BoxGeometry(0.12, RH, 6), wallM, false); sideWall.position.set(X0 - 0.06, FY + RH / 2, RB + 3); studio.add(sideWall);
+  const skirting = new THREE.Mesh(new THREE.BoxGeometry(RWD, 0.08, 0.02), SM(0x1c1c21)); skirting.position.set(RCX, FY + 0.04, RB + 0.01); studio.add(skirting);
+  const rug = mesh(new THREE.CylinderGeometry(1.7, 1.7, 0.01, 48), SM(0x1b1924, { roughness: 1 }), false); rug.scale.z = 0.7; rug.position.set(0, FY + 0.006, -0.3); studio.add(rug);
+
+  const canvasTex = (w, h, draw) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; return tx; };
+  const frameM2 = SM(0x26262c, { roughness: 0.5, metalness: 0.3 });
+
+  // window with a night city outside (experience station)
+  const WIN = { x: -16, y: 1.55, w: 2.6, h: 1.6 };
+  const nightTex = canvasTex(640, 400, (c, w, h) => {
+    const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#0b0a1f'); g.addColorStop(1, '#2a2050'); c.fillStyle = g; c.fillRect(0, 0, w, h);
+    c.fillStyle = '#f4f1ff'; c.beginPath(); c.arc(w * 0.78, h * 0.2, 20, 0, 7); c.fill();
+    for (let i = 0; i < 90; i++) { c.fillStyle = `rgba(255,255,255,${Math.random() * 0.7})`; c.fillRect(Math.random() * w, Math.random() * h * 0.5, 1.5, 1.5); }
+    let x = 0;
+    while (x < w) {
+      const bw = 22 + Math.random() * 46, bh = 70 + Math.random() * 210;
+      c.fillStyle = '#0a0912'; c.fillRect(x, h - bh, bw, bh);
+      for (let yy = h - bh + 8; yy < h - 6; yy += 11) for (let xx = x + 5; xx < x + bw - 5; xx += 9) if (Math.random() < 0.3) { c.fillStyle = Math.random() < 0.8 ? 'rgba(255,214,150,.85)' : 'rgba(157,140,255,.9)'; c.fillRect(xx, yy, 4, 5); }
+      x += bw + 3;
+    }
+  });
+  const win = new THREE.Mesh(new THREE.PlaneGeometry(WIN.w, WIN.h), new THREE.MeshBasicMaterial({ map: nightTex }));
+  win.position.set(WIN.x, WIN.y, RB + 0.005); studio.add(win);
+  [[WIN.h / 2, WIN.w + 0.1, 0.06], [-WIN.h / 2, WIN.w + 0.1, 0.06], [0, WIN.w, 0.03]].forEach(([dy, w, h]) => { const b = mesh(new THREE.BoxGeometry(w, h, 0.06), frameM2); b.position.set(WIN.x, WIN.y + dy, RB + 0.03); studio.add(b); });
+  [-WIN.w / 2, 0, WIN.w / 2].forEach((dx) => { const b = mesh(new THREE.BoxGeometry(dx ? 0.06 : 0.03, WIN.h, 0.06), frameM2); b.position.set(WIN.x + dx, WIN.y, RB + 0.03); studio.add(b); });
+  const sill = mesh(new THREE.BoxGeometry(WIN.w + 0.2, 0.04, 0.16), frameM2); sill.position.set(WIN.x, WIN.y - WIN.h / 2 - 0.05, RB + 0.08); studio.add(sill);
+  const moonLight = new THREE.PointLight(0x8f86ff, 5, 7, 1.4); moonLight.position.set(WIN.x, WIN.y, RB + 0.8); studio.add(moonLight);
+
+  // bookshelf with books and a small plant (skills station)
+  const SH = { x: -13, y: 0.35 };
+  const woodM = SM(0x2a221c, { roughness: 0.7 });
+  const rows = [0, 0.62, 1.24];
+  rows.forEach((dy) => { const b = mesh(new THREE.BoxGeometry(1.6, 0.04, 0.32), woodM); b.position.set(SH.x, SH.y + dy, RB + 0.16); studio.add(b); });
+  const bookCols = [0x9d8cff, 0x3f3f46, 0xe4e4e7, 0x22d3ee, 0x52525b, 0xa3e635, 0x71717a, 0xfbbf24];
+  rows.forEach((dy, row) => {
+    let x = SH.x - 0.72;
+    for (let k = 0; k < 9 - row * 2; k++) {
+      const h = 0.3 + ((k * 7 + row * 3) % 5) * 0.035, w = 0.05 + ((k + row) % 3) * 0.015;
+      const bk = mesh(new THREE.BoxGeometry(w, h, 0.22), SM(bookCols[(k + row * 3) % bookCols.length], { roughness: 0.8 }));
+      bk.position.set(x + w / 2, SH.y + dy + 0.02 + h / 2, RB + 0.16); studio.add(bk); x += w + 0.012;
+    }
+  });
+  const sPot = mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.13, 20), SM(0xe9e9e9)); sPot.position.set(SH.x + 0.55, SH.y + 1.24 + 0.085, RB + 0.16); studio.add(sPot);
+  for (let i = 0; i < 6; i++) { const lf = mesh(new THREE.ConeGeometry(0.03, 0.26, 5), SM(0x3d6b52)); lf.position.set(SH.x + 0.55, SH.y + 1.24 + 0.24, RB + 0.16); lf.rotation.set(Math.sin(i * 2.1) * 0.6, i, Math.cos(i * 1.3) * 0.6); studio.add(lf); }
+  const shelfLight = new THREE.PointLight(0xfff1dc, 3, 4, 1.6); shelfLight.position.set(SH.x, SH.y + 2.1, RB + 0.8); studio.add(shelfLight);
+
+  // four service screens on the wall (services station): each plays that service's live demo
+  const BX = [-10.6, -8.2, -5.8, -3.4], BY = 1.0, BW = 2.0, BH = 1.25;
+  const boards = SERVICES.map((d, i) => {
+    const cv = document.createElement('canvas'); cv.width = 800; cv.height = 500;
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+    const body = mesh(new RoundedBoxGeometry(BW + 0.1, BH + 0.1, 0.06, 3, 0.03), SM(0x0c0c0f, { roughness: 0.3, metalness: 0.5 }));
+    body.position.set(BX[i], BY, RB + 0.04); studio.add(body);
+    const mat = new THREE.MeshBasicMaterial({ map: tex, toneMapped: false });
+    const scr = new THREE.Mesh(new THREE.PlaneGeometry(BW, BH), mat);
+    scr.position.set(BX[i], BY, RB + 0.075); studio.add(scr);
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(BW, 0.16), new THREE.MeshBasicMaterial({ map: canvasTex(800, 64, (c, w, h) => {
+      c.fillStyle = '#9d8cff'; c.font = mono(22); c.fillText(`0${i + 1}`, 0, 40);
+      c.fillStyle = '#f4f4f5'; c.font = sans(30, 600); c.fillText(d.name, 52, 42);
+      c.fillStyle = '#a1a1aa'; c.font = mono(20); const g = d.goal; c.fillText(g, w - c.measureText(g).width, 40);
+    }), transparent: true }));
+    plate.position.set(BX[i], BY - BH / 2 - 0.16, RB + 0.02); studio.add(plate);
+    return { cv, ctx: cv.getContext('2d'), tex, mat, drawn: false };
+  });
+  function drawBoard(i, t) { const b = boards[i]; drawServiceDemo(b.ctx, 800, 500, i, t); b.tex.needsUpdate = true; b.drawn = true; }
+  boards.forEach((_, i) => drawBoard(i, 3));
+  const boardGlow = new THREE.PointLight(0x9d8cff, 0, 5, 1.2); boardGlow.position.set(BX[0], BY, RB + 1.2); studio.add(boardGlow);
+
+  // pendant lamp over the desk, framed poster, floor lamp on the right
+  const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 3, 6), new THREE.MeshBasicMaterial({ color: 0x27272a })); cord.position.set(0, FY + RH - 1.5, 0); studio.add(cord);
+  const shade = mesh(new THREE.ConeGeometry(0.26, 0.24, 32, 1, true), SM(0x1c1c20, { side: THREE.DoubleSide, metalness: 0.4, roughness: 0.4 })); shade.position.set(0, 1.9, 0); studio.add(shade);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffe6c2 })); bulb.position.set(0, 1.83, 0); studio.add(bulb);
+  const lampLight = new THREE.PointLight(0xffd9a8, 7, 5, 1.6); lampLight.position.set(0, 1.75, 0); studio.add(lampLight);
+  const posterTex = canvasTex(320, 440, (c, w, h) => {
+    c.fillStyle = '#16141f'; c.fillRect(0, 0, w, h); c.strokeStyle = '#9d8cff'; c.lineWidth = 3;
+    for (let i = 0; i < 9; i++) { c.beginPath(); c.arc(w / 2, h * 0.42, 20 + i * 13, 0, 7); c.globalAlpha = 1 - i * 0.1; c.stroke(); }
+    c.globalAlpha = 1; c.fillStyle = '#fff'; c.font = sans(34); c.fillText('ship it.', 40, h - 60); c.fillStyle = '#9d8cff'; c.font = mono(14); c.fillText('// burhanb53.dev', 40, h - 30);
+  });
+  const poster = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 1.03), new THREE.MeshBasicMaterial({ map: posterTex }));
+  poster.position.set(4.3, 1.3, RB + 0.01); studio.add(poster);
+  const flPole = mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.9, 10), SM(0xc4c4cc, { metalness: 0.9, roughness: 0.25 })); flPole.position.set(5.6, FY + 0.95, RB + 0.5); studio.add(flPole);
+  const flBase = mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.04, 24), SM(0x1c1c20)); flBase.position.set(5.6, FY + 0.02, RB + 0.5); studio.add(flBase);
+  const flGlobe = new THREE.Mesh(new THREE.SphereGeometry(0.16, 20, 16), new THREE.MeshBasicMaterial({ color: 0xfff1dc })); flGlobe.position.set(5.6, FY + 1.95, RB + 0.5); studio.add(flGlobe);
+  const flLight = new THREE.PointLight(0xfff1dc, 3, 4, 1.6); flLight.position.set(5.6, FY + 1.9, RB + 0.8); studio.add(flLight);
   const deskTop = mesh(new THREE.BoxGeometry(2.8, 0.07, 1.3), SM(0x161619, { roughness: 0.35, metalness: 0.2 }));
   studio.add(deskTop);
   const deskEdge = new THREE.Mesh(new THREE.BoxGeometry(2.81, 0.008, 1.31), new THREE.MeshBasicMaterial({ color: 0x3f3f46 }));
@@ -255,12 +346,20 @@ export function createWorld({ canvas, speechEl, tipEl, reduced }) {
   const collar = mesh(new THREE.TorusGeometry(0.1, 0.025, 12, 40), shirtL); collar.rotation.x = Math.PI / 2; collar.scale.y = 0.85; collar.position.y = 0.56; guy.add(collar);
   [-1, 1].forEach((s) => { const f = mesh(new THREE.BoxGeometry(0.11, 0.07, 0.012), shirtL); f.position.set(s * 0.055, 0.535, 0.085); f.rotation.set(-0.55, 0, s * 0.55); guy.add(f); });
   const neck = mesh(new THREE.CylinderGeometry(0.072, 0.082, 0.16, 24), skin); neck.position.y = 0.62; guy.add(neck);
+  const legsSit = new THREE.Group(), legsStand = new THREE.Group(); guy.add(legsSit, legsStand); legsStand.visible = false;
   [-0.13, 0.13].forEach((x) => {
-    const th = mesh(new THREE.CylinderGeometry(0.115, 0.1, 0.52, 24), pants); th.rotation.x = Math.PI / 2; th.position.set(x, -0.34, 0.2); guy.add(th);
-    const kn = mesh(new THREE.SphereGeometry(0.1, 20, 16), pants); kn.position.set(x, -0.34, 0.46); guy.add(kn);
-    const sh = mesh(new THREE.CylinderGeometry(0.092, 0.078, 0.5, 24), pants); sh.position.set(x, -0.6, 0.48); guy.add(sh);
-    const shoe = mesh(new THREE.SphereGeometry(0.1, 24, 16), shoeM); shoe.scale.set(0.85, 0.5, 1.6); shoe.position.set(x, -0.86, 0.56); guy.add(shoe);
-    const sole = mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.025, 24), soleM); sole.scale.z = 1.9; sole.position.set(x, -0.905, 0.56); guy.add(sole);
+    const th = mesh(new THREE.CylinderGeometry(0.115, 0.1, 0.52, 24), pants); th.rotation.x = Math.PI / 2; th.position.set(x, -0.34, 0.2); legsSit.add(th);
+    const kn = mesh(new THREE.SphereGeometry(0.1, 20, 16), pants); kn.position.set(x, -0.34, 0.46); legsSit.add(kn);
+    const sh = mesh(new THREE.CylinderGeometry(0.092, 0.078, 0.5, 24), pants); sh.position.set(x, -0.6, 0.48); legsSit.add(sh);
+    const shoe = mesh(new THREE.SphereGeometry(0.1, 24, 16), shoeM); shoe.scale.set(0.85, 0.5, 1.6); shoe.position.set(x, -0.86, 0.56); legsSit.add(shoe);
+    const sole = mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.025, 24), soleM); sole.scale.z = 1.9; sole.position.set(x, -0.905, 0.56); legsSit.add(sole);
+  });
+  [-0.13, 0.13].forEach((x) => {
+    const th = mesh(new THREE.CylinderGeometry(0.115, 0.1, 0.5, 24), pants); th.position.set(x, -0.6, 0); legsStand.add(th);
+    const kn = mesh(new THREE.SphereGeometry(0.1, 20, 16), pants); kn.position.set(x, -0.86, 0); legsStand.add(kn);
+    const sh = mesh(new THREE.CylinderGeometry(0.092, 0.078, 0.5, 24), pants); sh.position.set(x, -1.1, 0); legsStand.add(sh);
+    const shoe = mesh(new THREE.SphereGeometry(0.1, 24, 16), shoeM); shoe.scale.set(0.85, 0.5, 1.6); shoe.position.set(x, -1.36, 0.07); legsStand.add(shoe);
+    const sole = mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.025, 24), soleM); sole.scale.z = 1.9; sole.position.set(x, -1.405, 0.07); legsStand.add(sole);
   });
   const headG = new THREE.Group(); headG.position.y = 0.86; guy.add(headG);
   const head = mesh(new THREE.SphereGeometry(0.23, 48, 36), skin); head.scale.set(1, 1.13, 1.05); headG.add(head);
@@ -499,10 +598,10 @@ export function createWorld({ canvas, speechEl, tipEl, reduced }) {
   /* ---------- keyframes, one per section: hero, services, work, skills, experience, contact ---------- */
   const STUDIO = [
     { p: [2.5, -1.25, 0], r: [0.12, -0.62, 0], s: 1 },
-    { p: [-8, -6, -4], r: [0, 2.0, 0], s: 0.2 },
-    { p: [-9, -7, -5], r: [0, 2.4, 0], s: 0.15 },
-    { p: [-7.5, -5.5, -3], r: [0, 1.9, 0], s: 0.3 },
-    { p: [-9, -7, -5], r: [0, 2.4, 0], s: 0.15 },
+    { p: [9, -1.2, 2.2], r: [0.03, 0.12, 0], s: 1.5 },       // services: set every frame from the screen he stands at
+    { p: [3.5, -1.6, -6], r: [0.1, -0.3, 0], s: 0.9 },       // projects: room far back, laptop up front
+    { p: [17.8, -0.77, 1.75], r: [0.05, -0.15, 0], s: 1.1 }, // skills: the bookshelf behind the logos
+    { p: [19.97, -0.8, 2.37], r: [0.05, -0.2, 0], s: 1.1 },  // experience: the night window
     { p: [2.9, -1.45, 0], r: [0.1, -0.4, 0], s: 0.95 },
   ];
   const LAP = [
@@ -591,7 +690,8 @@ export function createWorld({ canvas, speechEl, tipEl, reduced }) {
 
   S.fs = S.f;
   const footerEl = document.querySelector('.footer');
-  let camX = 0, camY = 0;
+  let camX = 0, camY = 0, presentW = 0, guyY = 0, svcFocus = 0, lastBoard = -1, prevGX = 0, standing = false, guyRot = 0;
+  const svcEuler = new THREE.Euler(0.03, 0.12, 0);
   let raf = 0, t = 0, last = performance.now(), frame = 0, greeted = false, contactGreeted = false;
   function tick() {
     raf = requestAnimationFrame(tick);
@@ -609,20 +709,26 @@ export function createWorld({ canvas, speechEl, tipEl, reduced }) {
     } else if (canvas.style.opacity) canvas.style.opacity = '';
     const fs = S.fs, i0 = Math.min(LAST, Math.floor(fs)), i1 = Math.min(LAST, i0 + 1), e = ease(fs - i0);
 
+    // services: the room slides so the screen he is presenting sits on the right half of the screen
+    const svcT = Math.min(SERVICES.length - 1, Math.floor(clamp(S.svcP || 0) * SERVICES.length));
+    svcFocus += (svcT - svcFocus) * (reduced ? 1 : 0.045);
+    const bx = BX[0] + svcFocus * (BX[1] - BX[0]);
+    tmpV.set(bx, BY, RB).applyEuler(svcEuler).multiplyScalar(STUDIO[1].s);
+    STUDIO[1].p = [2.3 - tmpV.x, 0.45 - tmpV.y, 0.4 - tmpV.z];
     const st = lerpState(STUDIO[i0], STUDIO[i1], e); apply(studio, mob(st)); studio.visible = studio.scale.x > 0.12;
     const la = LAP[i0].attach ? attachState() : mob(LAP[i0]);
     const lb = LAP[i1].attach ? attachState() : mob(LAP[i1]);
     const ls = lerpState(la, lb, e);
     spinBoost *= 0.94;
     ls.r[1] += spinBoost * Math.PI * 2 * (1 - spinBoost);
-    if (!LAP[i0].attach || !LAP[i1].attach) ls.p[1] += Math.sin(t * 1.3) * 0.06 * Math.min(1, Math.abs(fs - 1) * 2);
+    if (!LAP[i0].attach || !LAP[i1].attach) ls.p[1] += Math.sin(t * 0.8) * 0.015 * Math.min(1, Math.abs(fs - 1) * 2);
     apply(laptop, ls);
     phoneW += ((Math.round(fs) === 2 && PROJECTS[S.activeP]?.phone ? 1 : 0) - phoneW) * 0.08;
     laptop.scale.multiplyScalar(1 - phoneW * 0.999);
     if (phoneW > 0.01) {
       phone.visible = true;
-      phone.position.set(ls.p[0] + 0.2, ls.p[1] + 0.6 + Math.sin(t * 1.2) * 0.06, ls.p[2]);
-      phone.rotation.set(0.04, 0.3 + Math.sin(t * 0.6) * 0.22 + (1 - phoneW) * 2.5, Math.sin(t * 0.8) * 0.04);
+      phone.position.set(ls.p[0] + 0.2, ls.p[1] + 0.6 + Math.sin(t * 0.8) * 0.015, ls.p[2]);
+      phone.rotation.set(0.04, 0.3 + Math.sin(t * 0.4) * 0.05 + (1 - phoneW) * 2.5, 0);
       phone.scale.setScalar(Math.max(0.001, phoneW * (isMobile() ? 1.15 : 1.8)));
       drawPhone(t);
     } else phone.visible = false;
@@ -702,16 +808,35 @@ export function createWorld({ canvas, speechEl, tipEl, reduced }) {
     points.rotation.y = Math.sin(t * 0.05) * 0.05;
 
     // the person
-    const typing = fs < 1.6, kk = t * 14;
-    armL.el.rotation.x = -0.85 + (typing ? Math.sin(kk) * 0.12 : 0);
+    // services: he gets up, walks to the wall screen and pitches; elsewhere he sits and types
+    presentW += ((fs > 0.55 && fs < 1.6 ? 1 : 0) - presentW) * (reduced ? 1 : 0.05);
+    const pw = ease(clamp(presentW));
+    if (pw > 0.6) standing = true; else if (pw < 0.4) standing = false;
+    legsSit.visible = !standing; legsStand.visible = standing;
+    guy.position.x = lerp(0, bx + 1.3, pw); guy.position.z = lerp(-0.72, -1.45, pw);
+    const walkV = Math.abs(guy.position.x - prevGX) / Math.max(dt, 0.001); prevGX = guy.position.x;
+    const walking = standing && walkV > 0.6;
+    guyRot += (lerp(0, -0.2, pw) - guyRot) * 0.06; guy.rotation.y = guyRot;
+    guyY += ((standing ? 0.39 : 0) - guyY) * 0.25;
+    const typing = pw < 0.1 && (fs < 0.6 || (fs > 2.4 && fs < 4.6)), kk = t * 14;
+    armL.sh.rotation.x = lerp(-0.5, -0.3, pw);
+    armL.sh.rotation.z = lerp(-0.08, -1.2 + Math.sin(t * 0.9) * 0.03, pw);
+    armL.el.rotation.x = lerp(-0.85 + (typing ? Math.sin(kk) * 0.12 : 0), -0.35, pw);
     if (S.wave > 0) S.wave -= 0.006;
     const wv = Math.max(fs > 4.5 ? 1 : 0, Math.min(1, S.wave * 3));
-    armR.sh.rotation.x = lerp(-0.5, -2.75, wv);
-    armR.sh.rotation.z = lerp(0.1, 0.3 + Math.sin(t * 9) * 0.35, wv);
-    armR.el.rotation.x = lerp(-0.85 + (typing ? Math.sin(kk + Math.PI) * 0.12 : 0), -0.35, wv);
-    if (jump > 0) { jump -= 0.03; guy.position.y = Math.sin((1 - jump) * Math.PI) * 0.25; } else guy.position.y = Math.sin(t * 2) * 0.01;
-    // head: steady, limited range, eased
-    const yawT = clamp(tx * 0.55 + (fs > 0.5 && fs < 1.5 ? -0.25 : 0.3), -0.6, 0.6);
+    armR.sh.rotation.x = lerp(lerp(-0.5, -0.45 + Math.sin(t * 1.1) * 0.05, pw), -2.75, wv);
+    armR.sh.rotation.z = lerp(lerp(0.1, 0.18, pw), 0.3 + Math.sin(t * 9) * 0.35, wv);
+    armR.el.rotation.x = lerp(lerp(-0.85 + (typing ? Math.sin(kk + Math.PI) * 0.12 : 0), -1.1 + Math.sin(t * 1.1 + 1) * 0.06, pw), -0.35, wv);
+    if (jump > 0) { jump -= 0.03; guy.position.y = guyY + Math.sin((1 - jump) * Math.PI) * 0.25; } else guy.position.y = guyY;
+    // the screen he stands at plays its live demo; the others sit dim
+    const act = Math.round(svcFocus);
+    if (fs > 0.3 && fs < 1.9 && frame % 2 === 0) drawBoard(act, t);
+    boards.forEach((b, k) => { const on = k === act ? 1 : 0.16 + 0.84 * (1 - pw); b.mat.color.setScalar(b.mat.color.r + (on - b.mat.color.r) * 0.08); });
+    boardGlow.position.x = BX[act]; boardGlow.intensity = pw * 6;
+    if (pw > 0.9 && act !== lastBoard && !walking) { lastBoard = act; const d = SERVICES[act]; say(`${d.name} ${d.title}`); }
+    if (pw < 0.2) lastBoard = -1;
+    // head: steady, limited range, eased; while presenting he glances between the screen and you
+    const yawT = pw > 0.5 ? (walking ? -0.2 : Math.sin(t * 0.35) > 0.5 ? -0.55 : 0.1) : clamp(tx * 0.55 + 0.3, -0.6, 0.6);
     const pitchT = clamp(-ty * 0.25 + 0.1, -0.2, 0.3);
     headG.rotation.y += (yawT - headG.rotation.y) * 0.05;
     headG.rotation.x += (pitchT - headG.rotation.x) * 0.05;
@@ -719,7 +844,7 @@ export function createWorld({ canvas, speechEl, tipEl, reduced }) {
     eyes.forEach((o) => (o.scale.y = blink));
     steam.forEach((s, i) => { const p = (t * 0.5 + i / 3) % 1; s.position.set(-0.95 + Math.sin(t * 2 + i) * 0.04, 0.3 + p * 0.5, 0.25); s.material.opacity = 0.35 * (1 - p); s.scale.setScalar(0.6 + p); });
     holo.position.y = 1.5 + Math.sin(t * 1.2) * 0.06;
-    holo.material.opacity = 0.9;
+    holo.material.opacity = 0.9 * (1 - pw); holo.visible = pw < 0.97;
 
     // greetings
     if (!greeted && t > 1.4 && fs < 0.3) { greeted = true; wave("Hi, I'm Burhanuddin 👋"); }

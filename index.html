@@ -145,12 +145,18 @@ html,body{background:#08080a;color:#f4f4f5}
 
 <!-- 1 · SERVICES: four cards, each with a live demo of the service -->
 <section class="section" id="services" aria-labelledby="svc-title">
+  <div class="svc-stage">
   <div class="container">
+    <div class="svc-side">
     <div class="section-head svc-head">
       <p class="eyebrow">01 · Services</p>
       <h2 id="svc-title" class="h2 split-lines">I solve your <em>digital problems.</em></h2>
     </div>
+    <div class="svc-pitch" id="svcPitch" aria-live="polite"></div>
+    <div class="svc-steps" id="svcSteps" aria-label="Services"></div>
+    </div>
     <div class="svc-grid" id="svcGrid"></div>
+  </div>
   </div>
 </section>
 
@@ -163,7 +169,7 @@ html,body{background:#08080a;color:#f4f4f5}
       <div class="section-head">
         <p class="eyebrow">02 · Projects</p>
         <h2 id="work-title" class="h2 split-lines">Things I've <em>shipped.</em></h2>
-        <p class="lead reveal"><span class="desk-inline">Scroll to flip through them, one project at a time. The laptop opens each one.</span><span class="touch-inline">Swipe through, tap one for details.</span></p>
+        <p class="lead reveal"><span class="desk-inline">Drag the cards left or right to flip through them. The laptop opens each one.</span><span class="touch-inline">Swipe through, tap one for details.</span></p>
       </div>
       <div class="filters reveal" role="tablist" aria-label="Filter projects" id="filters"></div>
       </div>
