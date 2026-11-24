@@ -183,9 +183,6 @@ let contactVisible = false;
 function onScroll() {
   const y = scrollY;
   header.classList.toggle('scrolled', y > 16);
-  header.classList.toggle('with-chips', y > innerHeight * 0.6);
-  if (!menuOpen) header.classList.toggle('hide', y > 500 && y > lastY + 2);
-  if (y < lastY - 2) header.classList.remove('hide');
   lastY = y;
   const max = document.documentElement.scrollHeight - innerHeight;
   progress.style.transform = `scaleX(${max > 0 ? y / max : 0})`;
