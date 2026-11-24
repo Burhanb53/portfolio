@@ -9,7 +9,7 @@ import nodemailer from 'nodemailer';
      SITE_URL            optional, linked from the confirmation email
      MAIL_DRY_RUN=1      build the emails without sending (for local design checks) */
 
-const TOPICS = ['a full-time hire', 'a website', 'a web app', 'a mobile app', 'DevOps / cloud help'];
+const TOPICS = ['a website', 'a web app', 'a mobile app', 'DevOps / cloud help', 'automation / AI'];
 const WHATSAPP = 'https://wa.me/971562708253';
 const OWNER = 'Burhanuddin Bohra';
 

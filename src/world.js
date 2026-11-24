@@ -480,6 +480,22 @@ export function createWorld({ canvas, speechEl, tipEl, reduced }) {
   const points = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 0.06, map: new THREE.CanvasTexture(dc), vertexColors: true, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending }));
   scene.add(points);
 
+  /* ---------- background helix: a slim double strip that winds along the page as you scroll ---------- */
+  const HN = small ? 500 : 1300, HH = 18;
+  const hPos = new Float32Array(HN * 3), hCol = new Float32Array(HN * 3), hU = new Float32Array(HN), hSt = new Float32Array(HN), hRung = new Float32Array(HN);
+  const hPal = [new THREE.Color(0xffffff), new THREE.Color(0x9d8cff)];
+  for (let i = 0; i < HN; i++) {
+    hU[i] = Math.random(); hSt[i] = i % 2; hRung[i] = Math.random();
+    const c = hPal[hSt[i]]; hCol[i * 3] = c.r; hCol[i * 3 + 1] = c.g; hCol[i * 3 + 2] = c.b;
+  }
+  const hGeo = new THREE.BufferGeometry();
+  hGeo.setAttribute('position', new THREE.BufferAttribute(hPos, 3));
+  hGeo.setAttribute('color', new THREE.BufferAttribute(hCol, 3));
+  const hMat = new THREE.PointsMaterial({ size: 0.05, map: points.material.map, vertexColors: true, transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending });
+  const helix = new THREE.Points(hGeo, hMat);
+  helix.frustumCulled = false;
+  scene.add(helix);
+
   /* ---------- keyframes, one per section: hero, services, work, skills, experience, contact ---------- */
   const STUDIO = [
     { p: [2.5, -1.25, 0], r: [0.12, -0.62, 0], s: 1 },
@@ -668,6 +684,21 @@ export function createWorld({ canvas, speechEl, tipEl, reduced }) {
       pPos[j] = x; pPos[j + 1] = y + Math.sin(t + i) * 0.015; pPos[j + 2] = z;
     }
     pGeo.attributes.position.needsUpdate = true;
+    // background band: a twisting ribbon that sweeps from side to side as you scroll, like it follows you down the page
+    {
+      const wExp = Math.max(0, 1 - Math.abs(fs - 4) * 1.6);
+      hMat.opacity = 0.4 * (1 - wExp * 0.6);
+      const cx = Math.cos(fs * 1.15) * 5.6, flow = t * 0.35 + fs * 1.4;
+      for (let i = 0; i < HN; i++) {
+        const y = ((hU[i] * HH + fs * 1.2) % HH) - HH / 2;
+        const sway = Math.sin(y * 0.32 + flow) * 2.4, tw = y * 0.55 + t * 0.5;
+        const w = (hRung[i] >= 0 ? hRung[i] : hSt[i] * 0.5 + hU[i] * 0.07) * 2 - 1;
+        hPos[i * 3] = cx * (1 - Math.abs(y) / 40) + sway + Math.cos(tw) * w * 1.15;
+        hPos[i * 3 + 1] = y;
+        hPos[i * 3 + 2] = -4 + Math.sin(tw) * w * 1.15;
+      }
+      hGeo.attributes.position.needsUpdate = true;
+    }
     points.rotation.y = Math.sin(t * 0.05) * 0.05;
 
     // the person

@@ -38,7 +38,7 @@ $('#year').textContent = new Date().getFullYear();
 
 /* ================= RENDER CONTENT ================= */
 const items = MARQUEE.map((n) => `<span class="marquee-item">${brandSvg(n, 18)}${n}</span>`).join('');
-$('#marquee').innerHTML = items + `<span class="dup" aria-hidden="true" style="display:contents">${items}</span>`;
+if ($('#marquee')) $('#marquee').innerHTML = items + `<span class="dup" aria-hidden="true" style="display:contents">${items}</span>`;
 
 /* ================= SERVICES: four cards, each with a live demo ================= */
 $('#svcGrid').innerHTML = SERVICES.map((s, i) => `
@@ -359,6 +359,7 @@ function updateTime() {
   const time = new Intl.DateTimeFormat('en-US', { timeZone: CONTACT.tz, hour: 'numeric', minute: '2-digit' }).format(now);
   const hour = +new Intl.DateTimeFormat('en-GB', { timeZone: CONTACT.tz, hour: '2-digit', hour12: false }).format(now);
   const awake = hour >= 8 && hour < 23;
+  if (!$('#localTime')) return;
   $('#localTime').textContent = `It's ${time} in Dubai · ${awake ? 'usually replies within a few hours' : "I'll reply first thing in the morning"}`;
 }
 updateTime();
@@ -745,6 +746,7 @@ if (finePointer && !reduced) {
 
   /* cursor ring */
   const cur = $('.cursor');
+  if (cur) {
   const cx = gsap.quickTo(cur, 'x', { duration: 0.35, ease: 'power3' });
   const cy = gsap.quickTo(cur, 'y', { duration: 0.35, ease: 'power3' });
   addEventListener('pointermove', (e) => { cur.classList.add('on'); cx(e.clientX); cy(e.clientY); }, { passive: true });
@@ -753,6 +755,7 @@ if (finePointer && !reduced) {
     if (document.body.classList.contains('hover-3d')) return;
     cur.classList.toggle('hover', !!e.target.closest('a, button, .proj, .chip, .filter, label'));
   });
+  }
 }
 
 /* ================= SCROLL ANIMATIONS ================= */
